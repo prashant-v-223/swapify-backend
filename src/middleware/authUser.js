@@ -1,5 +1,5 @@
 require("dotenv").config();
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_ACCESS_SECRET;
 const jwt = require("jsonwebtoken");
 
 const authUser = (req, res, next) => {
