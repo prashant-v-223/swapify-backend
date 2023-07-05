@@ -53,11 +53,11 @@ router.post("/", async (req, res) => {
       } else {
         await userInfo.save();
         res.json({ result: "Otp has been sent successfully !" });
-        // transporter.sendMail(mailData, (error, info) => {
-        //   if (error) {
-        //     res.status(500).send("Server error");
-        //   }
-        // });
+        transporter.sendMail(mailData, (error, info) => {
+          if (error) {
+            res.status(500).send("Server error");
+          }
+        });
       }
     } catch (error) {
       console.log(error);
@@ -151,11 +151,11 @@ router.post("/reset-password", async (req, res) => {
       user.otp = otp;
       await user.save();
       res.json({ message: "Otp has been sent successfully !" });
-      // transporter.sendMail(mailData, (error, info) => {
-      //   if (error) {
-      //     res.status(500).send("Server error");
-      //   }
-      // });
+      transporter.sendMail(mailData, (error, info) => {
+        if (error) {
+          res.status(500).send("Server error");
+        }
+      });
     }
   } catch (error) {
     console.log(error);
