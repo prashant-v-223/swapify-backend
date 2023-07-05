@@ -5,8 +5,6 @@ const UserRoute = require("./src/router/Users");
 require("./src/db/conn");
 dotenv.config();
 const app = express();
-
-// Middleware
 app.use(express.json());
 app.use(cors({ origin: "*", credentials: true }));
 app.use("/users", UserRoute);
