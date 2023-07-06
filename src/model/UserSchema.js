@@ -35,13 +35,13 @@ const UserSchema = new mongoose.Schema(
       required: true,
       type: Number,
     },
-    resetToken: {
-      type: String,
-      default: null,
+    balance: {
+      type: Number,
+      default: 0,
     },
-    resetTokenExpiration: {
-      type: Date,
-      default: null,
+    transactionIds: {
+      type: [Object], // Array of transaction IDs
+      default: [], // Empty array by default
     },
   },
   { timestamps: true }

@@ -2,15 +2,12 @@ const express = require("express");
 const router = new express.Router();
 const Users = require("../model/UserSchema");
 const bcrypt = require("bcrypt");
-const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const authUser = require("../middleware/authUser");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 const saltround = 10;
-const authRole = require("../middleware/authRole");
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
-// const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const transporter = nodemailer.createTransport({
   port: 465,
   host: "smtp.gmail.com",
@@ -28,7 +25,6 @@ router.post("/", async (req, res) => {
       message: "Please fill all the fields",
     });
   } else {
-    console.log(email, password, name);
     try {
       const otp = Math.floor(Math.random() * 9000 + 1000);
       let salt = await bcrypt.genSalt(saltround);
@@ -178,7 +174,9 @@ router.put("/verify-reset-otp", async (req, res) => {
           returnOriginal: false,
         }
       );
-      res.status(200).json({ message: "You password have been changed successfully !" });
+      res
+        .status(200)
+        .json({ message: "You password have been changed successfully !" });
     } else {
       res.status(401).json({ message: "Wrong Otp !" });
     }
@@ -187,5 +185,105 @@ router.put("/verify-reset-otp", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+router.post("/fetch-user", authUser, async (req, res) => {
+  try {
+    await Users.findOne({ _id: req.id }, (err, user) => {
+      if (err) {
+        res.status(500).json({ message: "Server error" });
+      } else {
+        res.status(200).json({ user });
+      }
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/get-all-users", async (req, res) => {
+  try {
+    const users = await Users.find({});
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.get("/get-single-user", async (req, res) => {
+  try {
+    const users = await Users.find({});
+    res.status(200).json({ users });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/transactions", (req, res) => {
+  const { transaction, userId } = req.body;
+
+  // Find the user by ID
+  Users.findById(userId)
+    .then((user) => {
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Update the transactionIds array for the user
+      user.transactionIds.push(transaction);
+      // Save the user
+      return user.save();
+    })
+    .then(() => {
+      console.log("Transaction ID appended:", transaction);
+      res.status(201).json({ message: "Transaction ID appended successfully" });
+    })
+    .catch((error) => {
+      console.error("Error appending transaction ID:", error);
+      res.status(500).json({
+        error: "An error occurred while appending the transaction ID",
+      });
+    });
+});
+
+router.put("/update-transaction", async (req, res) => {
+  try {
+    const { userId, transactionId, status } = req.body;
+    // Find the user by ID
+    const user = await Users.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Find the transaction within the user's transactionIds array
+    const transaction = user.transactionIds.find(
+      (transaction) => transaction.id === transactionId
+    );
+
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    // Update the transaction status
+    transaction.status = status;
+
+    // Mark the transactionIds field as modified
+    user.markModified("transactionIds");
+
+    // Save the user
+    await user.save();
+
+    res
+      .status(200)
+      .json({ message: "Transaction status updated successfully" });
+    console.log(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 
 module.exports = router;
