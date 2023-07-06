@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const authUser = require("../middleware/authUser");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
+const axios = require("axios");
 const saltround = 10;
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const transporter = nodemailer.createTransport({
@@ -186,15 +187,10 @@ router.put("/verify-reset-otp", async (req, res) => {
   }
 });
 
-router.post("/fetch-user", authUser, async (req, res) => {
+router.get("/fetch-user", authUser, async (req, res) => {
   try {
-    await Users.findOne({ _id: req.id }, (err, user) => {
-      if (err) {
-        res.status(500).json({ message: "Server error" });
-      } else {
-        res.status(200).json({ user });
-      }
-    });
+    const user = await Users.findById(req.id);
+    res.status(200).json({ user });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
@@ -211,53 +207,23 @@ router.get("/get-all-users", async (req, res) => {
   }
 });
 
-router.get("/get-single-user", async (req, res) => {
+router.post("/transactions", async (req, res) => {
   try {
-    const users = await Users.find({});
-    res.status(200).json({ users });
+    const { transaction, userId } = req.body;
+    const user = await Users.findById(userId);
+    await user.transactionIds.push(transaction);
+    await user.save();
+    res.status(201).json({ message: "Transaction ID appended successfully" });
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-router.post("/transactions", (req, res) => {
-  const { transaction, userId } = req.body;
-
-  // Find the user by ID
-  Users.findById(userId)
-    .then((user) => {
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      // Update the transactionIds array for the user
-      user.transactionIds.push(transaction);
-      // Save the user
-      return user.save();
-    })
-    .then(() => {
-      console.log("Transaction ID appended:", transaction);
-      res.status(201).json({ message: "Transaction ID appended successfully" });
-    })
-    .catch((error) => {
-      console.error("Error appending transaction ID:", error);
-      res.status(500).json({
-        error: "An error occurred while appending the transaction ID",
-      });
-    });
-});
-
 router.put("/update-transaction", async (req, res) => {
   try {
-    const { userId, transactionId, status } = req.body;
-    // Find the user by ID
+    const { userId, transactionId, status, transactionType } = req.body;
     const user = await Users.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // Find the transaction within the user's transactionIds array
     const transaction = user.transactionIds.find(
       (transaction) => transaction.id === transactionId
     );
@@ -266,19 +232,53 @@ router.put("/update-transaction", async (req, res) => {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    // Update the transaction status
-    transaction.status = status;
+    let updatedUser = null;
 
-    // Mark the transactionIds field as modified
-    user.markModified("transactionIds");
+    if (transactionType === "deposit" && status === "approved") {
+      updatedUser = await Users.findOneAndUpdate(
+        {
+          _id: userId,
+          "transactionIds.id": transactionId,
+        },
+        {
+          $set: {
+            "transactionIds.$.status": status,
+          },
+          $inc: {
+            balance: transaction.amount,
+          },
+        },
+        { new: true }
+      );
+    } else if (transactionType === "withdraw" && status === "approved") {
+      if (user.balance < transaction.amount) {
+        return res.status(400).json({ error: "Insufficient balance" });
+      }
 
-    // Save the user
-    await user.save();
+      updatedUser = await Users.findOneAndUpdate(
+        {
+          _id: userId,
+          "transactionIds.id": transactionId,
+        },
+        {
+          $set: {
+            "transactionIds.$.status": status,
+          },
+          $inc: {
+            balance: -transaction.amount,
+          },
+        },
+        { new: true }
+      );
+    } else {
+      return res.status(400).json({ error: "Invalid transaction type or status" });
+    }
 
-    res
-      .status(200)
-      .json({ message: "Transaction status updated successfully" });
-    console.log(user);
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json({ message: "Transaction status updated successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
@@ -286,4 +286,57 @@ router.put("/update-transaction", async (req, res) => {
 });
 
 
+
+// Route to fetch transactionIds for all users (admin-only access)
+router.get("/transactionIds", async (req, res) => {
+  try {
+    const pipeline = [
+      {
+        $match: {
+          role: { $ne: "admin" }, // Exclude admin user
+        },
+      },
+      {
+        $unwind: "$transactionIds",
+      },
+      {
+        $group: {
+          _id: null,
+          transactionIds: { $push: "$transactionIds" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          transactionIds: 1,
+        },
+      },
+    ];
+    const results = await Users.aggregate(pipeline);
+    if (results.length === 0) {
+      return res.json({ transactionIds: [] });
+    }
+    const transactionIds = results[0].transactionIds;
+    res.json({ transactionIds });
+  } catch (error) {
+    console.error("Error fetching transactionIds:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/depositlist/:id", async (req, res) => {
+  try {
+    const { data } = await axios.get("https://exolix.com/api/v2/transactions", {
+      headers: {
+        Authorization:
+          "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InNnbmFncHVyZThAZ21haWwuY29tIiwic3ViIjoyNzQxOSwiaWF0IjoxNjg4MTA5NjQ4LCJleHAiOjE4NDU4OTc2NDh9.dXVHXGfNWb1BU55JVRk9MA0Y1xlnkYazXYxREK1dy4Y",
+      },
+    });
+    const { transactions } = data.data;
+    res.status(200).json({ data });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 module.exports = router;

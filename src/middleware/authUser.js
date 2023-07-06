@@ -9,7 +9,7 @@ const authUser = (req, res, next) => {
     if (!token) {
       res.status(401).send("Access denied");
     }
-    const data = jwt.verify(token, JWT_SECRET);
+    const { data } = jwt.verify(token, JWT_SECRET);
     req.id = data.id;
     next();
   } catch (error) {
