@@ -271,6 +271,18 @@ router.put("/update-transaction", async (req, res) => {
         { new: true }
       );
     } else {
+      await Users.findOneAndUpdate(
+        {
+          _id: userId,
+          "transactionIds.id": transactionId,
+        },
+        {
+          $set: {
+            "transactionIds.$.status": status,
+          },
+        },
+        { new: true }
+      );
       return res
         .status(400)
         .json({ error: "Invalid transaction type or status" });
