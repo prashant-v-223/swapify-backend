@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 const validator = require("validator");
-//  the first step will be always create a Schema
 const UserSchema = new mongoose.Schema(
   {
     name: {
@@ -40,8 +39,8 @@ const UserSchema = new mongoose.Schema(
       default: 0,
     },
     transactionIds: {
-      type: [Object], // Array of transaction IDs
-      default: [], // Empty array by default
+      type: [Object], 
+      default: [], 
     },
   },
   { timestamps: true }

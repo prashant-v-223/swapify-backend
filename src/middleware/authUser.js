@@ -3,7 +3,6 @@ const JWT_SECRET = process.env.JWT_ACCESS_SECRET;
 const jwt = require("jsonwebtoken");
 
 const authUser = (req, res, next) => {
-  //  get the user from the jwt and add id to req object
   const token = req.headers["auth-token"];
   try {
     if (!token) {
