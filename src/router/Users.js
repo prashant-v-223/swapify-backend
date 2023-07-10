@@ -227,7 +227,6 @@ router.put("/update-transaction", async (req, res) => {
     const transaction = user.transactionIds.find(
       (transaction) => transaction.id === transactionId
     );
-
     if (!transaction) {
       return res.status(404).json({ error: "Transaction not found" });
     }
@@ -271,6 +270,23 @@ router.put("/update-transaction", async (req, res) => {
         { new: true }
       );
     } else {
+      if (transactionType === "deposit" && status === "rejected" && transaction.status === "approved") {
+        await Users.findOneAndUpdate(
+          {
+            _id: userId,
+            "transactionIds.id": transactionId,
+          },
+          {
+            $set: {
+              "transactionIds.$.status": status,
+            },
+            $inc: {
+              balance: -transaction.amount,
+            },
+          },
+          { new: true }
+        );
+      }
       await Users.findOneAndUpdate(
         {
           _id: userId,
