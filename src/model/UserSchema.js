@@ -30,6 +30,10 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
     otp: {
       required: true,
       type: Number,
@@ -39,8 +43,8 @@ const UserSchema = new mongoose.Schema(
       default: 0,
     },
     transactionIds: {
-      type: [Object], 
-      default: [], 
+      type: [Object],
+      default: [],
     },
   },
   { timestamps: true }
