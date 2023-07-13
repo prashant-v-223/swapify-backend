@@ -34,6 +34,10 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isKYC: {
+      type: Boolean,
+      default: false,
+    },
     otp: {
       required: true,
       type: Number,

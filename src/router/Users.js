@@ -1,13 +1,11 @@
 const express = require("express");
 const router = new express.Router();
 const Users = require("../model/UserSchema");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authUser = require("../middleware/authUser");
 const nodemailer = require("nodemailer");
 require("dotenv").config();
-const axios = require("axios");
-const saltround = 10;
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const transporter = nodemailer.createTransport({
   port: 465,
@@ -18,7 +16,12 @@ const transporter = nodemailer.createTransport({
   },
   secure: true, // upgrades later with STARTTLS -- change this based on the PORT
 });
-
+let saltround = 10
+function generateRandomId() {
+  const min = 1000000000; // Minimum 10-digit number
+  const max = 9999999999; // Maximum 10-digit number
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 router.post("/", async (req, res) => {
   const { email, password, name } = req.body;
   if (!email || !password || !name) {
@@ -96,24 +99,33 @@ router.post("/login", async (req, res) => {
     if (!IsValidme) {
       res.status(403).json({ message: "Invalid credential" });
     } else {
-      if (IsValidme.isVerified) {
-        let data = {
-          id: IsValidme.id,
-          name: IsValidme.name,
-        };
-        let isMatch = await bcrypt.compare(password, IsValidme.password);
-        if (isMatch) {
-          let authToken = jwt.sign({ data }, JWT_ACCESS_SECRET, {
-            expiresIn: "10day",
-          });
-          res.status(200).json({ authToken });
+      console.log(IsValidme);
+      if (IsValidme.isBlocked !== true) {
+        console.log(IsValidme);
+        if (IsValidme.isVerified) {
+          let data = {
+            id: IsValidme.id,
+            name: IsValidme.name,
+          };
+          let isMatch = await bcrypt.compare(password, IsValidme.password);
+          if (isMatch) {
+            let authToken = jwt.sign({ data }, JWT_ACCESS_SECRET, {
+              expiresIn: "10day",
+            });
+            res.status(200).json({ authToken });
+          } else {
+            res.status(403).json({ message: "Invalid credential" });
+          }
         } else {
-          res.status(403).json({ message: "Invalid credential" });
+          res.status(401).json({
+            message: "Please verify your email address",
+          });
         }
       } else {
         res.status(401).json({
-          message: "Please verify your email address",
+          message: "your account has been disabled",
         });
+
       }
     }
   } catch (error) {
@@ -222,15 +234,39 @@ router.put('/block/:userId', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
-
+router.put('/kyc/:userId', async (req, res) => {
+  const userId = req.params.userId;
+  try {
+    const user = await Users.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    user.isKYC = true;
+    await user.save();
+    res.json({ message: 'User blocked successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 router.post("/transactions", async (req, res) => {
   try {
     const { transaction, userId } = req.body;
-    const user = await Users.findById(userId);
-    await user.transactionIds.push(transaction);
-    await user.save();
-    res.status(201).json({ message: "Transaction ID appended successfully" });
+    console.log("transaction", transaction.id !== undefined);
+    if (transaction.id !== undefined) {
+      const user = await Users.findById(userId);
+      await user.transactionIds.push(transaction);
+      await user.save();
+      res.status(201).json({ message: "Transaction ID appended successfully" });
+    } else {
+      transaction.id = generateRandomId()
+      const user = await Users.findById(userId);
+      await user.transactionIds.push(transaction);
+      await user.save();
+      res.status(201).json({ message: "Transaction ID appended successfully" });
+
+    }
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
