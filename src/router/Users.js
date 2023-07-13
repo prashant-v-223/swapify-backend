@@ -226,7 +226,7 @@ router.put('/block/:userId', async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    user.isBlocked = true;
+    user.isBlocked = !user.isBlocked;
     await user.save();
     res.json({ message: 'User blocked successfully' });
   } catch (error) {
