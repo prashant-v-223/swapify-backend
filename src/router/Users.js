@@ -116,7 +116,7 @@ router.post("/login", async (req, res) => {
           res.status(500).send("Server error");
         } else {
         }
-        res.status(500).send("otp send in your mail plase check!");
+        res.status(200).send("otp send in your mail plase check!");
       });
     } else {
       res.status(403).json({ message: "Invalid credential" });
