@@ -92,8 +92,8 @@ router.post("/verify-otp", async (req, res) => {
 router.post("/login", async (req, res) => {
   const otp = Math.floor(Math.random() * 9000 + 1000);
   try {
-    const { email } = req.body;
-    if (!email) {
+    const { email, password } = req.body;
+    if (!email || !password) {
       res.status(403).send("please fill the data");
     }
     const mailData = {
