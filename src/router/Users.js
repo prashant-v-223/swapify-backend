@@ -96,21 +96,31 @@ router.post("/login", async (req, res) => {
     if (!email || !password) {
       res.status(403).send("please fill the data");
     }
-    const mailData = {
-      from: process.env.EMAIL,
-      to: req.body.email,
-      subject: "Verifcation code",
-      text: null,
-      html: `<span>Your Login code is ${otp}</span>`,
-    };
-    await Users.findOneAndUpdate({ email: email }, { loginotp: otp });
-    transporter.sendMail(mailData, async (error, info) => {
-      if (error) {
-        res.status(500).send("Server error");
-      } else {
-      }
-      res.status(500).send("otp send in your mail plase check!");
-    });
+    let IsValidme = await Users.findOne({ email: email });
+    if (!IsValidme) {
+      res.status(403).json({ message: "user not found!" });
+    }
+
+    let isMatch = await bcrypt.compare(password, IsValidme.password);
+    if (isMatch) {
+      const mailData = {
+        from: process.env.EMAIL,
+        to: req.body.email,
+        subject: "Verifcation code",
+        text: null,
+        html: `<span>Your Login code is ${otp}</span>`,
+      };
+      await Users.findOneAndUpdate({ email: email }, { loginotp: otp });
+      transporter.sendMail(mailData, async (error, info) => {
+        if (error) {
+          res.status(500).send("Server error");
+        } else {
+        }
+        res.status(500).send("otp send in your mail plase check!");
+      });
+    } else {
+      res.status(403).json({ message: "Invalid credential" });
+    }
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
