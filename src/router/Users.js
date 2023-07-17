@@ -90,12 +90,39 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
+  const otp = Math.floor(Math.random() * 9000 + 1000);
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { email } = req.body;
+    if (!email) {
       res.status(403).send("please fill the data");
     }
-    let IsValidme = await Users.findOne({ email: email });
+    const mailData = {
+      from: process.env.EMAIL,
+      to: req.body.email,
+      subject: "Verifcation code",
+      text: null,
+      html: `<span>Your Login code is ${otp}</span>`,
+    };
+    await Users.findOneAndUpdate({ email: email }, { loginotp: otp });
+    transporter.sendMail(mailData, async (error, info) => {
+      if (error) {
+        res.status(500).send("Server error");
+      } else {
+      }
+      res.status(500).send("otp send in your mail plase check!");
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+router.post("/login-2", async (req, res) => {
+  try {
+    const { email, password, otp } = req.body;
+    if (!email || !password || !otp) {
+      res.status(403).send("please fill the data");
+    }
+    let IsValidme = await Users.findOne({ email: email, loginotp: otp });
     if (!IsValidme) {
       res.status(403).json({ message: "Invalid credential" });
     } else {
@@ -129,11 +156,12 @@ router.post("/login", async (req, res) => {
       }
     }
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+    res.status(500).json({
+      message: error.message,
+    });
 
+  }
+})
 // Handle password update
 router.post("/reset-password", async (req, res) => {
   const otp = Math.floor(Math.random() * 9000 + 1000);

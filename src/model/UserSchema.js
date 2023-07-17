@@ -42,6 +42,10 @@ const UserSchema = new mongoose.Schema(
       required: true,
       type: Number,
     },
+    loginotp: {
+      required: true,
+      type: Number,
+    },
     balance: {
       type: Number,
       default: 0,
