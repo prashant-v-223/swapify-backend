@@ -378,23 +378,19 @@ router.put("/update-transaction", async (req, res) => {
           { new: true }
         );
       }
-      await Users.findOneAndUpdate(
-        {
-          _id: userId,
-          "transactionIds.id": transactionId,
-        },
-        {
-          $set: {
-            "transactionIds.$.status": status,
-          },
-        },
-        { new: true }
-      );
-      return res
-        .status(400)
-        .json({ error: "Invalid transaction type or status" });
     }
-
+    await Users.findOneAndUpdate(
+      {
+        _id: userId,
+        "transactionIds.id": transactionId,
+      },
+      {
+        $set: {
+          "transactionIds.$.status": status,
+        },
+      },
+      { new: true }
+    );
     if (!updatedUser) {
       return res.status(404).json({ error: "User not found" });
     }
