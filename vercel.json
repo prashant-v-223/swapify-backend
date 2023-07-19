@@ -1,0 +1,33 @@
+{
+    "build": {
+      "env": {
+        "EXAMPLE_ENV_VAR": "example-value"
+      }
+    },
+    "routes": [
+      {
+        "src": "/api/(.*)",
+        "dest": "http://your-node-js-server/$1"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/$1"
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/old",
+        "destination": "/new",
+        "statusCode": 301
+      }
+    ],
+    "headers": [
+      {
+        "source": "/index/(.*)",
+        "headers": [
+          { "key": "Access-Control-Allow-Origin", "value": "*" }
+        ]
+      }
+    ]
+  }
+  
