@@ -47,11 +47,21 @@ router.post("/", async (req, res) => {
         html: `<span>Your Verification code is ${otp}</span>`,
       };
       let userInfo = new Users(user);
-      let IsEmail = await Users.findOne({ email: req.body.email });
+      let IsEmail = await Users.findOne({ email: req.body.email, isVerified: true });
       if (IsEmail) {
         res.status(403).json({ result: "Account already exists" });
       } else {
-        await userInfo.save();
+        let IsEmail = await Users.findOne({ email: req.body.email });
+        if (IsEmail) {
+          await Users.findOneAndUpdate({ email: req.body.email }, {
+            name: name,
+            password: hash_password,
+            otp: otp
+          });
+
+        } else {
+          await userInfo.save();
+        }
         res.json({ result: "Otp has been sent successfully !" });
         transporter.sendMail(mailData, (error, info) => {
           if (error) {
@@ -110,14 +120,19 @@ router.post("/login", async (req, res) => {
         text: null,
         html: `<span>Your Login code is ${otp}</span>`,
       };
-      await Users.findOneAndUpdate({ email: email }, { loginotp: otp });
-      transporter.sendMail(mailData, async (error, info) => {
-        if (error) {
-          res.status(500).send("Server error");
-        } else {
-        }
-        res.status(200).send("otp send in your mail plase check!");
-      });
+      let da6a = await Users.findOneAndUpdate({ email: email, isVerified: true }, { loginotp: otp });
+      console.log("da6ada6ada6ada6ada6ada6a", da6a);
+      if (da6a === null) {
+        res.status(403).json({ message: "you can not enter register otp please re register your account to access!" });
+      } else {
+        transporter.sendMail(mailData, async (error, info) => {
+          if (error) {
+            res.status(500).send("Server error");
+          } else {
+          }
+          res.status(200).send("otp send in your mail plase check!");
+        });
+      }
     } else {
       res.status(403).json({ message: "Invalid credential" });
     }
