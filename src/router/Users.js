@@ -114,7 +114,7 @@ router.post("/login", async (req, res) => {
     let isMatch = await bcrypt.compare(password, IsValidme.password);
     if (isMatch) {
       const mailData = {
-        from: process.env.EMAIL,
+        from: "v4xverifyuser@gmail.com",
         to: req.body.email,
         subject: "Verifcation code",
         text: null,
