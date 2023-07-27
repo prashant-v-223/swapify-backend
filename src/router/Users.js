@@ -1,5 +1,6 @@
 const express = require("express");
 const router = new express.Router();
+var ejs = require("ejs");
 const Users = require("../model/UserSchema");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -39,13 +40,7 @@ router.post("/", async (req, res) => {
         password: hash_password,
         otp,
       };
-      const mailData = {
-        from: "swapfy69@gmail.com",
-        to: req.body.email,
-        subject: "Verifcation code",
-        text: null,
-        html: `<span>Your Verification code is ${otp}</span>`,
-      };
+
       let userInfo = new Users(user);
       let IsEmail = await Users.findOne({ email: req.body.email, isVerified: true });
       if (IsEmail) {
@@ -63,11 +58,27 @@ router.post("/", async (req, res) => {
           await userInfo.save();
         }
         res.json({ result: "Otp has been sent successfully !" });
-        transporter.sendMail(mailData, (error, info) => {
-          if (error) {
-            res.status(500).send("Server error");
+        ejs.renderFile(
+          __dirname + "/otp.ejs",
+          {
+            name: "donotreply.v4x.org",
+            action_url: otp,
+          },
+          async function (err, mail) {
+            const mailData = {
+              from: "swapfy69@gmail.com",
+              to: req.body.email,
+              subject: "Verifcation code",
+              text: null,
+              html: mail,
+            };
+            transporter.sendMail(mailData, (error, info) => {
+              if (error) {
+                res.status(500).send("Server error");
+              }
+            });
           }
-        });
+        )
       }
     } catch (error) {
       console.log(error);
@@ -113,25 +124,32 @@ router.post("/login", async (req, res) => {
 
     let isMatch = await bcrypt.compare(password, IsValidme.password);
     if (isMatch) {
-      const mailData = {
-        from: "swapfy69@gmail.com",
-        to: req.body.email,
-        subject: "Verifcation code",
-        text: null,
-        html: `<span>Your Login code is ${otp}</span>`,
-      };
       let da6a = await Users.findOneAndUpdate({ email: email, isVerified: true }, { loginotp: otp });
-      console.log("da6ada6ada6ada6ada6ada6a", da6a);
       if (da6a === null) {
         res.status(403).json({ message: "you can not enter register otp please re register your account to access!" });
       } else {
-        transporter.sendMail(mailData, async (error, info) => {
-          if (error) {
-            res.status(500).send("Server error");
-          } else {
+        ejs.renderFile(
+          __dirname + "/otp.ejs",
+          {
+            name: "donotreply.v4x.org",
+            action_url: otp,
+          },
+          async function (err, mail) {
+            const mailData = {
+              from: "swapfy69@gmail.com",
+              to: req.body.email,
+              subject: "Verifcation code",
+              text: null,
+              html: mail,
+            };
+            transporter.sendMail(mailData, (error, info) => {
+              if (error) {
+                res.status(500).send("Server error");
+              }
+            });
           }
-          res.status(200).send("otp send in your mail plase check!");
-        });
+        )
+        res.status(200).send("otp send in your mail plase check!");
       }
     } else {
       res.status(403).json({ message: "Invalid credential" });
