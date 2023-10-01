@@ -273,6 +273,17 @@ router.put("/verify-reset-otp", async (req, res) => {
 router.get("/fetch-user", authUser, async (req, res) => {
   try {
     const user = await Users.findById(req.id);
+    [
+      {
+        $unwind: "$transactionIds" // Unwind the transactionIds array
+      },
+      {
+        $group: {
+          _id: null,
+          totalAmount: { $sum: "$transactionIds.amount" } // Calculate the sum of amount
+        }
+      }
+    ]
     res.status(200).json({ user });
   } catch (error) {
     console.log(error);
